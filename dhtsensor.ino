@@ -8,7 +8,7 @@
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>        
 
-const char* mqtt_server = "MQTT_SERVER_IP"; 
+const char* mqtt_server = "MQTT_SERVER"; 
 const char* mqtt_user = "MQTT_USER";
 const char* mqtt_pass= "MQTT_PASS";
 
@@ -20,7 +20,7 @@ PubSubClient client(espClient);
 
 SenMLPack doc(conv_macid);
 
-#define DHTPIN 4
+#define DHTPIN 2
 #define DHTTYPE DHT22
 
 DHT dht(DHTPIN, DHTTYPE);
@@ -31,7 +31,7 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect("egm-lora.84:F3:EB:0C:8A:71", mqtt_user, mqtt_pass)) {
+    if (client.connect("egm-lora.dhtmyriem", mqtt_user, mqtt_pass)) {
       Serial.println("connected");
     } else {
       Serial.print("failed, rc=");
@@ -57,6 +57,7 @@ void setup() {
     Serial.print(WiFi.localIP());// Print the IP address
     client.setServer(mqtt_server, 1883);
     senMLSetLogger(&Serial);
+    dht.begin();
     delay(1000);
     Serial.println("start");
 }
@@ -71,6 +72,11 @@ void loop() {
   // put your main code here, to run repeatedly:
   float t = dht.readTemperature();
   float h = dht.readHumidity();
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(h) || isnan(t)) {
+    Serial.println(F("Failed to read from DHT sensor!"));
+    return;
+  }
   Serial.println(t);
   Serial.println(h);
   SenMLFloatRecord rec_t(KPN_SENML_TEMPERATURE, SENML_UNIT_DEGREES_CELSIUS, t);
@@ -82,6 +88,6 @@ void loop() {
   char buffer[150];    
   memset(buffer, 0, sizeof(buffer));        
   doc.toJson(buffer, sizeof(buffer));
-  client.publish("egm-lora.84:F3:EB:0C:8A:71", buffer);
-  delay(3000);
+  client.publish("egm-lora.dhtmyriem", buffer);
+  delay(3000 * 10);
 }
